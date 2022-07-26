@@ -31,4 +31,19 @@ public class AuthController : ControllerBase
         response.Message = "Registration successful";
         return Ok(response);
     }
+    
+    [HttpPost("login")]
+    public async Task<ActionResult<ServiceResponse<string>>> Login(UserLoginDto  request)
+    {
+        var response = await _authRepo.Login(request.Username, request.Password);
+
+        if (!response.Success)
+        {
+            if (string.IsNullOrWhiteSpace(response.Message)) response.Message = "Error during registration.";
+            return BadRequest(response);
+        }
+
+        response.Message = "Login successful";
+        return Ok(response);
+    }
 }
