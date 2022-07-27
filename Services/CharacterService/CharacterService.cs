@@ -38,48 +38,31 @@ public class CharacterService : ICharacterService
         return serviceResponse;
     }
 
-    public async Task<ServiceResponse<GetCharacterDto>> UpdateCharacter(UpdateCharacterDto updateCharacter)
-    {
-        ServiceResponse<GetCharacterDto> response = new ServiceResponse<GetCharacterDto>();
-
-        try
-        {
-            var character = await _context.Characters
-                .FirstOrDefaultAsync(c => c.Id == updateCharacter.Id);
-
-            character.Name = updateCharacter.Name;
-            character.HitPoints = updateCharacter.HitPoints;
-            character.Strength = updateCharacter.Strength;
-            character.Defenses = updateCharacter.Defenses;
-            character.Intelligence = updateCharacter.Intelligence;
-            character.Class = updateCharacter.Class;
-
-            await _context.SaveChangesAsync();
-
-            response.Message = "Character has been updated";
-            response.Data = _mapper.Map<GetCharacterDto>(character);
-        }
-        catch (Exception ex)
-        {
-            response.Success = false;
-            response.Message = ex.Message;
-        }
-        
-        return response;
-    }
-
     public async Task<ServiceResponse<List<GetCharacterDto>>> DeleteCharacter(int id)
     {
         ServiceResponse<List<GetCharacterDto>> response = new ServiceResponse<List<GetCharacterDto>>();
 
         try
         {
-            Character character = await _context.Characters.FirstAsync(c => c.Id == id);
-            _context.Characters.Remove(character);
-            await _context.SaveChangesAsync();
-            
-            response.Message = "Character has been deleted";
-            response.Data = _context.Characters.Select(c => _mapper.Map<GetCharacterDto>(c)).ToList();
+            Character character = await _context.Characters
+                .FirstOrDefaultAsync(c => c.Id == id && c.User.Id == GetUserId());
+
+            if (character != null)
+            {
+                _context.Characters.Remove(character);
+                await _context.SaveChangesAsync();
+                
+                response.Message = "Character has been deleted";
+                response.Data = _context.Characters
+                    .Where(c => c.User.Id == GetUserId())
+                    .Select(c => _mapper.Map<GetCharacterDto>(c)).ToList();
+            }
+            else
+            {
+                response.Success = false;
+                response.Message = "Character not found.";
+            }
+
         }
         catch (Exception ex)
         {
@@ -105,10 +88,51 @@ public class CharacterService : ICharacterService
     public async Task<ServiceResponse<GetCharacterDto>> GetCharacterById(int id)
     {
         var serviceResponse = new ServiceResponse<GetCharacterDto>();
-        var dbCharacter = await _context.Characters.FirstOrDefaultAsync(c => c.Id == id);
+        var dbCharacter = await _context.Characters
+            .FirstOrDefaultAsync(c => c.Id == id && c.User.Id == GetUserId());
         serviceResponse.Message = "Character has been fetched";
         serviceResponse.Data = _mapper.Map<GetCharacterDto>(dbCharacter);
         
         return serviceResponse;
+    }
+    
+    public async Task<ServiceResponse<GetCharacterDto>> UpdateCharacter(UpdateCharacterDto updateCharacter)
+    {
+        ServiceResponse<GetCharacterDto> response = new ServiceResponse<GetCharacterDto>();
+
+        try
+        {
+            var character = await _context.Characters
+                .Include(c => c.User)
+                .FirstOrDefaultAsync(c => c.Id == updateCharacter.Id);
+
+            if (character.User.Id == GetUserId())
+            {
+                character.Name = updateCharacter.Name;
+                character.HitPoints = updateCharacter.HitPoints;
+                character.Strength = updateCharacter.Strength;
+                character.Defenses = updateCharacter.Defenses;
+                character.Intelligence = updateCharacter.Intelligence;
+                character.Class = updateCharacter.Class;
+
+                await _context.SaveChangesAsync();
+
+                response.Message = "Character has been updated";
+                response.Data = _mapper.Map<GetCharacterDto>(character);
+            }
+            else
+            {
+                response.Success = false;
+                response.Message = "Character not found.";
+            }
+
+        }
+        catch (Exception ex)
+        {
+            response.Success = false;
+            response.Message = ex.Message;
+        }
+        
+        return response;
     }
 }
