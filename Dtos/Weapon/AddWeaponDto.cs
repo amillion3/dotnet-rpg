@@ -1,10 +1,8 @@
-﻿namespace dotnet_rpg.Models;
+﻿namespace dotnet_rpg.Dtos.Weapon;
 
-public class Weapon
+public class AddWeaponDto
 {
-    public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public int Damage { get; set; }
-    public Character Character { get; set; }
     public int CharacterId { get; set; }
 }

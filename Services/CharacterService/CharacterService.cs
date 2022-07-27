@@ -2,6 +2,7 @@
 using AutoMapper;
 using dotnet_rpg.Data;
 using dotnet_rpg.Dtos.Character;
+using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.EntityFrameworkCore;
 
 namespace dotnet_rpg.Services.CharacterService;
@@ -36,6 +37,46 @@ public class CharacterService : ICharacterService
         serviceResponse.Message = "Character has been added";
         
         return serviceResponse;
+    }
+    
+    public async Task<ServiceResponse<GetCharacterDto>> AddCharacterSkill(AddCharacterSkillDto newCharacterSkill)
+    {
+        var response = new ServiceResponse<GetCharacterDto>();
+
+        try
+        {
+            var character = await _context.Characters
+                .Include(c => c.Weapon)
+                .Include(c => c.Skills)
+                .FirstOrDefaultAsync(c => c.Id == newCharacterSkill.CharacterId &&
+                                                    c.User.Id == GetUserId());
+
+            if (character == null)
+            {
+                response.Success = false;
+                response.Message = "Character not found.";
+                return response;
+            }
+
+            var skill = await _context.Skills.FirstOrDefaultAsync(s => s.Id == newCharacterSkill.SkillId);
+            if (skill == null)
+            {
+                response.Success = false;
+                response.Message = "Skill not found.";
+                return response;
+            }
+            
+            character.Skills.Add(skill);
+            await _context.SaveChangesAsync();
+            response.Data = _mapper.Map<GetCharacterDto>(character);
+        }
+        catch (Exception ex)
+        {
+            response.Success = false;
+            response.Message = ex.Message;
+        }
+
+        return response;
     }
 
     public async Task<ServiceResponse<List<GetCharacterDto>>> DeleteCharacter(int id)
